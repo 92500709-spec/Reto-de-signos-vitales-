@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reto de Signos Vitales</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;min-height:100vh;font-family:Arial,sans-serif;background:linear-gradient(135deg,#e7efff,#f5eaff);color:#28344a}
+.container{max-width:800px;margin:25px auto;background:white;padding:30px;border-radius:22px;box-shadow:0 8px 30px #25345b20}
+header{text-align:center;margin-bottom:25px}
+header h1,h2{color:#465cb4}
+header p{color:#667085;line-height:1.5}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:25px}
+.level-card{border:2px solid #e0e5f5;background:#f8f9ff;padding:20px 10px;border-radius:15px;cursor:pointer;text-align:center;transition:.2s}
+.level-card:hover{border-color:#6679d5;background:#eef0ff;transform:translateY(-3px)}
+.level-card h3{color:#465cb4}
+.level-card p{font-size:13px;color:#69758a}
+button{border:none;border-radius:12px;padding:14px 20px;font-size:16px;font-weight:bold;cursor:pointer}
+button:disabled{cursor:default}
+.primary{background:#596dc6;color:white;width:100%}
+.secondary{background:#e9edff;color:#465cb4;width:100%;margin-top:12px}
+.info{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.tag{background:#edf0ff;color:#465cb4;padding:10px 15px;border-radius:20px;font-weight:bold;font-size:14px}
+.progress-bg{height:10px;background:#e7e9f2;border-radius:20px;overflow:hidden;margin-bottom:25px}
+.progress{height:100%;width:0%;background:#687bd3;transition:.3s}
+.question-box{background:#f8f9ff;border:1px solid #e5e8f6;padding:25px;border-radius:16px}
+.question-number{color:#687bd3;font-weight:bold;margin-bottom:15px}
+#question{font-size:21px;line-height:1.5;margin-bottom:22px;white-space:pre-line}
+input{width:100%;padding:15px;border:2px solid #dce1ef;border-radius:12px;font-size:16px;margin-bottom:15px}
+input:focus{outline:none;border-color:#687bd3}
+.option{display:block;width:100%;text-align:left;background:white;border:2px solid #dce1ef;color:#28344a;padding:15px;margin:10px 0;border-radius:12px;cursor:pointer;font-size:16px}
+.option:hover:not(:disabled){border-color:#687bd3;background:#eef0ff}
+.option:disabled{opacity:1}
+.option.right{background:#e6f7ed;border-color:#279653;color:#176b3a}
+.option.wrong{background:#fff0ed;border-color:#d65c4d;color:#a33b2d}
+#feedback{display:none;padding:17px;border-radius:12px;margin-top:18px;line-height:1.6}
+.correct{background:#e6f7ed;color:#176b3a}
+.incorrect{background:#fff0ed;color:#a33b2d}
+.hidden{display:none!important}
+#results{text-align:center}
+.final-score{font-size:42px;font-weight:bold;color:#596dc6;margin:20px}
+.result-card{background:#f5f6ff;border-radius:14px;padding:20px;line-height:1.8;margin:20px 0}
+.note{color:#748096;font-size:13px;line-height:1.5;margin-top:20px}
+@media(max-width:600px){.container{padding:20px}.levels{grid-template-columns:1fr}#question{font-size:19px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>🩺 Reto de Signos Vitales</h1>
+<p>Pon a prueba tus conocimientos de enfermería. Identifica valores normales, alteraciones y situaciones clínicas.</p>
+</header>
+
+<section id="startScreen">
+<h2>Selecciona tu nivel de dificultad</h2>
+<p>Elige el nivel que deseas contestar.</p>
+<div class="levels">
+<div class="level-card" onclick="startGame('basico')">
+<h3>🟢 Básico</h3><p>Valores normales y conceptos de signos vitales.</p>
+</div>
+<div class="level-card" onclick="startGame('intermedio')">
+<h3>🟡 Intermedio</h3><p>Identificación de alteraciones y parámetros.</p>
+</div>
+<div class="level-card" onclick="startGame('avanzado')">
+<h3>🔴 Avanzado</h3><p>Casos clínicos con opciones de respuesta.</p>
+</div>
+</div>
+<p class="note">Básico e Intermedio: escribe tu respuesta. Avanzado: selecciona el inciso correcto.</p>
+</section>
+
+<section id="gameScreen" class="hidden">
+<div class="info">
+<span class="tag" id="levelName"></span>
+<span class="tag" id="score">Puntos: 0</span>
+</div>
+<div class="progress-bg"><div class="progress" id="progress"></div></div>
+<div class="question-box">
+<div class="question-number" id="questionNumber"></div>
+<h2 id="question"></h2>
+<div id="optionsContainer" class="hidden"></div>
+<form id="answerForm">
+<input type="text" id="answer" placeholder="Escribe tu respuesta..." autocomplete="off" required>
+<button class="primary" id="checkButton" type="submit">Comprobar respuesta</button>
+</form>
+<div id="feedback"></div>
+<button class="secondary hidden" id="nextButton" onclick="nextQuestion()">Siguiente pregunta →</button>
+</div>
+<button class="secondary" onclick="backToLevels()">Volver a elegir nivel</button>
+</section>
+
+<section id="results" class="hidden">
+<h2>¡Terminaste el reto! 🎉</h2>
+<p>Este es tu resultado final:</p>
+<div class="final-score" id="finalScore"></div>
+<div class="result-card" id="resultDetails"></div>
+<button class="primary" onclick="backToLevels()">Elegir otro nivel</button>
+</section>
+</div>
+
+<script>
+const questionBank = {
+basico:[
+{question:"¿Cuál es el rango normal de la frecuencia cardiaca en un adulto?",answers:["60 a 100","60-100","60 a 100 lpm","60-100 lpm","60 a 100 latidos por minuto"],correct:"60 a 100 latidos por minuto (lpm).",explanation:"La frecuencia cardiaca indica cuántas veces late el corazón en un minuto."},
+{question:"¿Cuál es el rango normal de la frecuencia respiratoria en un adulto?",answers:["12 a 20","12-20","12 a 20 rpm","12 a 20 respiraciones por minuto"],correct:"12 a 20 respiraciones por minuto.",explanation:"La frecuencia respiratoria indica cuántas respiraciones realiza una persona en un minuto."},
+{question:"¿Cuál es la presión arterial normal de referencia en un adulto?",answers:["120/80","120 80","120 sobre 80","120/80 mmhg","120 80 mmhg","120 sobre 80 mmhg"],correct:"120/80 mmHg.",explanation:"La primera cifra representa la presión sistólica y la segunda la diastólica."},
+{question:"¿Cuál es el rango de temperatura corporal normal en un adulto?",answers:["36.5 a 37.4","36.5-37.4","36.5 a 37.4 grados","36.5 a 37.4 grados celsius","36.5 a 37.4 c"],correct:"36.5 a 37.4 °C.",explanation:"La temperatura corporal puede variar según la persona y el sitio de medición."},
+{question:"¿Cuál es el rango normal de SpO2?",answers:["95 a 100","95-100","95 a 100%","95-100%","95 a 100 por ciento"],correct:"95 a 100 %.",explanation:"La SpO₂ representa el porcentaje estimado de hemoglobina que transporta oxígeno."},
+{question:"¿Cómo se llama la escala utilizada para valorar la intensidad del dolor de 0 a 10?",answers:["eva","escala de eva","escala eva"],correct:"EVA o Escala Visual Analógica.",explanation:"La EVA permite valorar la intensidad del dolor. El 0 representa ausencia de dolor y el 10 el máximo dolor imaginable."},
+{question:"¿Qué significa FC en la valoración de signos vitales?",answers:["frecuencia cardiaca","frecuencia del corazon"],correct:"Frecuencia cardiaca.",explanation:"Es el número de latidos del corazón por minuto."},
+{question:"¿Qué significa FR en la valoración de signos vitales?",answers:["frecuencia respiratoria","frecuencia de respiracion"],correct:"Frecuencia respiratoria.",explanation:"Es el número de respiraciones realizadas en un minuto."},
+{question:"¿En qué unidad se registra generalmente la presión arterial?",answers:["mmhg","milimetros de mercurio","milimetros de mercurio mmhg"],correct:"Milímetros de mercurio (mmHg).",explanation:"La presión arterial se expresa en milímetros de mercurio."},
+{question:"¿Qué instrumento se utiliza para medir la saturación de oxígeno?",answers:["oximetro","pulsioximetro","oximetro de pulso"],correct:"Oxímetro de pulso o pulsioxímetro.",explanation:"Este dispositivo estima la saturación periférica de oxígeno y muestra el pulso."}
+],
+
+intermedio:[
+{question:"¿Cómo se llama una frecuencia cardiaca menor de 60 latidos por minuto en un adulto?",answers:["bradicardia","frecuencia cardiaca baja","pulso lento"],correct:"Bradicardia.",explanation:"Es una frecuencia cardiaca inferior a 60 lpm en un adulto. Debe interpretarse según los síntomas y el contexto."},
+{question:"¿Cómo se llama una frecuencia cardiaca mayor de 100 latidos por minuto en un adulto?",answers:["taquicardia","frecuencia cardiaca elevada","pulso rapido"],correct:"Taquicardia.",explanation:"Es una frecuencia cardiaca superior a 100 lpm en un adulto en reposo."},
+{question:"¿Cómo se llama una frecuencia respiratoria menor de 12 respiraciones por minuto?",answers:["bradipnea","respiracion lenta","frecuencia respiratoria baja"],correct:"Bradipnea.",explanation:"Es una frecuencia respiratoria menor de la esperada en un adulto."},
+{question:"¿Cómo se llama una frecuencia respiratoria mayor de 20 respiraciones por minuto?",answers:["taquipnea","respiracion rapida","frecuencia respiratoria elevada"],correct:"Taquipnea.",explanation:"Es el aumento de la frecuencia respiratoria por encima del rango habitual."},
+{question:"¿Cómo se denomina la presión arterial baja?",answers:["hipotension","hipotension arterial","presion baja","presion arterial baja"],correct:"Hipotensión arterial.",explanation:"Puede acompañarse de mareo, debilidad o desmayo. Se debe valorar junto con los síntomas."},
+{question:"¿Cómo se denomina la presión arterial elevada de forma persistente?",answers:["hipertension","hipertension arterial","presion alta","presion arterial alta"],correct:"Hipertensión arterial.",explanation:"La hipertensión requiere mediciones adecuadas y valoración profesional para confirmar el diagnóstico."},
+{question:"¿A partir de qué temperatura se considera fiebre según el criterio utilizado en este juego?",answers:["37.5","37.5 en adelante","37.5 o mas","37.5 grados","37.5 grados celsius","37.5 c"],correct:"37.5 °C en adelante.",explanation:"En este material educativo utilizamos 37.5 °C como punto de referencia para identificar fiebre."},
+{question:"¿Cómo se llama la disminución importante de la temperatura corporal por debajo de 35 °C?",answers:["hipotermia","temperatura baja"],correct:"Hipotermia.",explanation:"La hipotermia es una disminución importante de la temperatura corporal."},
+{question:"¿Cómo se denomina una disminución del oxígeno en la sangre?",answers:["hipoxemia","baja oxigenacion","disminucion de oxigeno en sangre"],correct:"Hipoxemia.",explanation:"Es una disminución del oxígeno en la sangre. Una SpO₂ baja puede ser una señal de alerta."},
+{question:"Si un paciente tiene una SpO2 de 89 %, ¿qué alteración debes identificar?",answers:["desaturacion","hipoxemia","saturacion baja","disminucion de la saturacion de oxigeno"],correct:"Desaturación o saturación de oxígeno baja.",explanation:"Una saturación de 89 % es preocupante en un adulto sin un objetivo individual diferente y requiere valoración inmediata."}
+],
+
+avanzado:[
+{question:"CASO CLÍNICO 1:\n\nUn paciente adulto llega al centro de salud después de presentar vómitos y diarrea durante dos días.\n\nSignos vitales:\n• FC: 115 lpm\n• FR: 24 rpm\n• PA: 90/60 mmHg\n• Temperatura: 37.5 °C\n• SpO2: 97 %\n\n¿Qué problema de salud podría estar presentando?",options:["A) Hipertensión arterial","B) Deshidratación","C) Hipotermia","D) Bradicardia"],correctOption:1,explanation:"Los vómitos y la diarrea pueden provocar pérdida de líquidos. La taquicardia y la presión arterial baja pueden ser datos compatibles con deshidratación. Se necesita valoración clínica."},
+{question:"CASO CLÍNICO 2:\n\nUna paciente adulta presenta tos, fiebre y malestar general.\n\nSignos vitales:\n• FC: 110 lpm\n• FR: 26 rpm\n• PA: 120/80 mmHg\n• Temperatura: 38.5 °C\n• SpO2: 94 %\n\n¿Qué problema podría estar relacionado con estos signos y síntomas?",options:["A) Proceso infeccioso respiratorio","B) Hipotermia","C) Bradicardia","D) Hipoglucemia"],correctOption:0,explanation:"La tos, fiebre, taquicardia y taquipnea pueden relacionarse con una infección respiratoria. Se requiere valoración para identificar la causa."},
+{question:"CASO CLÍNICO 3:\n\nUn paciente con antecedente de asma presenta dificultad para respirar y sibilancias.\n\nSignos vitales:\n• FC: 120 lpm\n• FR: 30 rpm\n• PA: 125/80 mmHg\n• Temperatura: 36.8 °C\n• SpO2: 89 %\n\n¿Qué situación clínica podría estar presentando?",options:["A) Crisis asmática","B) Hipotermia","C) Hipertensión arterial","D) Bradipnea"],correctOption:0,explanation:"La dificultad respiratoria, las sibilancias, la taquipnea y la saturación baja son datos compatibles con una posible exacerbación asmática. Requiere valoración inmediata."},
+{question:"CASO CLÍNICO 4:\n\nUn adulto acude a consulta y presenta cifras elevadas de presión arterial en mediciones repetidas correctamente.\n\nSignos vitales:\n• FC: 82 lpm\n• FR: 17 rpm\n• PA: 160/95 mmHg\n• Temperatura: 36.7 °C\n• SpO2: 98 %\n\n¿Qué alteración debe sospecharse?",options:["A) Hipotensión arterial","B) Bradicardia","C) Hipertensión arterial","D) Hipotermia"],correctOption:2,explanation:"La presión arterial está elevada. Es necesario continuar la valoración para confirmar un posible diagnóstico de hipertensión."},
+{question:"CASO CLÍNICO 5:\n\nUn paciente adulto llega a valoración con debilidad y mareo.\n\nSignos vitales:\n• FC: 48 lpm\n• FR: 16 rpm\n• PA: 110/70 mmHg\n• Temperatura: 36.8 °C\n• SpO2: 98 %\n\n¿Qué alteración de la frecuencia cardiaca presenta?",options:["A) Taquicardia","B) Bradicardia","C) Taquipnea","D) Hipertensión"],correctOption:1,explanation:"Una frecuencia cardiaca de 48 lpm está por debajo del rango habitual en adultos. El mareo y la debilidad requieren valoración clínica."},
+{question:"CASO CLÍNICO 6:\n\nUna paciente adulta presenta fiebre y escalofríos.\n\nSignos vitales:\n• FC: 118 lpm\n• FR: 25 rpm\n• PA: 100/65 mmHg\n• Temperatura: 39 °C\n• SpO2: 96 %\n\n¿Qué alteraciones de los signos vitales identificas?",options:["A) Bradicardia, bradipnea e hipotermia","B) Hipotensión, hipotermia y bradicardia","C) Taquicardia, taquipnea y fiebre","D) Frecuencia cardiaca y respiratoria normales"],correctOption:2,explanation:"La FC está elevada, la FR supera 20 respiraciones por minuto y la temperatura es de 39 °C. Se deben valorar las posibles causas."}
+]
+};
+
+let selectedLevel="";
+let questions=[];
+let currentQuestion=0;
+let points=0;
+let correctCount=0;
+let answered=false;
+
+function normalize(text){
+ return text.toLowerCase()
+ .normalize("NFD")
+ .replace(/[\u0300-\u036f]/g,"")
+ .replace(/(\d),(\d)/g,"$1.$2")
+ .replace(/[°%/]/g," ")
+ .replace(/[.,;:!?¿¡()]/g," ")
+ .replace(/\s+/g," ")
+ .trim();
+}
+
+function startGame(level){
+ selectedLevel=level;
+ questions=questionBank[level];
+ currentQuestion=0;
+ points=0;
+ correctCount=0;
+
+ document.getElementById("startScreen").classList.add("hidden");
+ document.getElementById("results").classList.add("hidden");
+ document.getElementById("gameScreen").classList.remove("hidden");
+
+ const names={
+  basico:"Nivel Básico",
+  intermedio:"Nivel Intermedio",
+  avanzado:"Nivel Avanzado"
+ };
+
+ document.getElementById("levelName").textContent=names[level];
+ showQuestion();
+}
+
+function showQuestion(){
+ answered=false;
+ const q=questions[currentQuestion];
+
+ document.getElementById("questionNumber").textContent=
+ `Pregunta ${currentQuestion+1} de ${questions.length}`;
+ document.getElementById("question").textContent=q.question;
+
+ const optionsContainer=document.getElementById("optionsContainer");
+ const answerForm=document.getElementById("answerForm");
+
+ optionsContainer.innerHTML="";
+ document.getElementById("answer").value="";
+ document.getElementById("answer").disabled=false;
+ document.getElementById("feedback").style.display="none";
+ document.getElementById("nextButton").classList.add("hidden");
+ document.getElementById("checkButton").disabled=false;
+
+ if(selectedLevel==="avanzado"){
+  answerForm.classList.add("hidden");
+  optionsContainer.classList.remove("hidden");
+
+  q.options.forEach((option,index)=>{
+   const button=document.createElement("button");
+   button.type="button";
+   button.className="option";
+   button.textContent=option;
+   button.addEventListener("click",()=>checkAdvancedAnswer(index));
+   optionsContainer.appendChild(button);
+  });
+ }else{
+  answerForm.classList.remove("hidden");
+  optionsContainer.classList.add("hidden");
+  document.getElementById("answer").focus();
+ }
+
+ document.getElementById("score").textContent=`Puntos: ${points}`;
+ document.getElementById("progress").style.width=
+ `${(currentQuestion/questions.length)*100}%`;
+}
+
+document.getElementById("answerForm").addEventListener("submit",function(event){
+ event.preventDefault();
+ if(answered)return;
+
+ const userAnswer=normalize(document.getElementById("answer").value);
+ if(!userAnswer)return;
+
+ const q=questions[currentQuestion];
+ const isCorrect=q.answers.some(answer=>normalize(answer)===userAnswer);
+
+ answered=true;
+ document.getElementById("answer").disabled=true;
+ document.getElementById("checkButton").disabled=true;
+
+ const feedback=document.getElementById("feedback");
+ feedback.style.display="block";
+
+ if(isCorrect){
+  points+=10;
+  correctCount++;
+  feedback.className="correct";
+  feedback.innerHTML=`<strong>¡Respuesta correcta! 🎉</strong><br>+10 puntos<br><br>${q.explanation}`;
+ }else{
+  feedback.className="incorrect";
+  feedback.innerHTML=`<strong>Respuesta incorrecta.</strong><br><br><strong>Respuesta esperada:</strong><br>${q.correct}<br><br>${q.explanation}`;
+ }
+
+ document.getElementById("score").textContent=`Puntos: ${points}`;
+ document.getElementById("nextButton").classList.remove("hidden");
+});
+
+function checkAdvancedAnswer(selectedIndex){
+ if(answered)return;
+
+ answered=true;
+ const q=questions[currentQuestion];
+ const buttons=document.querySelectorAll(".option");
+ const feedback=document.getElementById("feedback");
+ const isCorrect=selectedIndex===q.correctOption;
+
+ buttons.forEach((button,index)=>{
+  button.disabled=true;
+  if(index===q.correctOption)button.classList.add("right");
+  if(index===selectedIndex&&!isCorrect)button.classList.add("wrong");
+ });
+
+ feedback.style.display="block";
+
+ if(isCorrect){
+  points+=10;
+  correctCount++;
+  feedback.className="correct";
+  feedback.innerHTML=`<strong>¡Respuesta correcta! 🎉</strong><br>+10 puntos<br><br>${q.explanation}`;
+ }else{
+  feedback.className="incorrect";
+  feedback.innerHTML=`<strong>Respuesta incorrecta.</strong><br><br><strong>Respuesta correcta:</strong><br>${q.options[q.correctOption]}<br><br>${q.explanation}`;
+ }
+
+ document.getElementById("score").textContent=`Puntos: ${points}`;
+ document.getElementById("nextButton").classList.remove("hidden");
+}
+
+function nextQuestion(){
+ currentQuestion++;
+ if(currentQuestion<questions.length){
+  showQuestion();
+ }else{
+  finishGame();
+ }
+}
+
+function finishGame(){
+ document.getElementById("gameScreen").classList.add("hidden");
+ document.getElementById("results").classList.remove("hidden");
+ document.getElementById("progress").style.width="100%";
+
+ const percentage=Math.round((correctCount/questions.length)*100);
+
+ document.getElementById("finalScore").textContent=
+ `${points} / ${questions.length*10}`;
+
+ let message="";
+ if(percentage>=90)message="¡Excelente! Tienes un gran dominio del tema.";
+ else if(percentage>=70)message="¡Muy bien! Sigue practicando.";
+ else if(percentage>=50)message="Vas avanzando. Repasa los temas que te resultaron difíciles.";
+ else message="Te recomendamos estudiar nuevamente y volver a intentarlo.";
+
+ document.getElementById("resultDetails").innerHTML=`
+ <strong>Nivel:</strong> ${selectedLevel.toUpperCase()}<br>
+ <strong>Respuestas correctas:</strong> ${correctCount}<br>
+ <strong>Respuestas incorrectas:</strong> ${questions.length-correctCount}<br>
+ <strong>Calificación:</strong> ${percentage}%<br><br>
+ ${message}`;
+}
+
+function backToLevels(){
+ document.getElementById("gameScreen").classList.add("hidden");
+ document.getElementById("results").classList.add("hidden");
+ document.getElementById("startScreen").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
